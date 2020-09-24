@@ -216,7 +216,10 @@ class NvidiaBuyer:
         return self.cli_locale
 
     def get_product_ids(self):
-        self.product_ids = [PRODUCT_IDS[self.locale][self.gpu]]
+        if isinstance(PRODUCT_IDS[self.locale][self.gpu], list):
+            self.product_ids = PRODUCT_IDS[self.locale][self.gpu]
+        if isinstance(PRODUCT_IDS[self.locale][self.gpu], str):
+            self.product_ids = [PRODUCT_IDS[self.locale][self.gpu]]
 
     def run_items(self):
         log.info(
@@ -254,8 +257,10 @@ class NvidiaBuyer:
             if self.enabled:
                 log.info(f"{self.gpu_long_name} is in stock. Go buy it.")
                 cart_url = self.open_cart_url(product_id)
-                self.notification_handler.send_notification(f" {self.gpu_long_name} with product ID: {product_id} in "
-                                                            f"stock: {cart_url}")
+                self.notification_handler.send_notification(
+                    f" {self.gpu_long_name} with product ID: {product_id} in "
+                    f"stock: {cart_url}"
+                )
                 self.enabled = False
         except Timeout:
             log.error("Had a timeout error.")
