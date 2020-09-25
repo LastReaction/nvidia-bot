@@ -83,7 +83,10 @@ def amazon(
         selenium_utils.no_amazon_image()
 
     amzn_obj = Amazon(
-        username=amazon_email, password=amazon_password, headless=headless
+        username=amazon_email,
+        password=amazon_password,
+        headless=headless,
+        item_url=amazon_item_url,
     )
     amzn_obj.run_item(item_url=amazon_item_url, price_limit=amazon_price_limit)
 
@@ -101,11 +104,10 @@ def bestbuy(sku, headless):
 
 @click.command()
 @click.option("--test", is_flag=True)
-@click.option("--model", type=str)
 @click.option("--headless", is_flag=True)
-def evga(test, model, headless):
+def evga(test, headless):
     ev = Evga(headless)
-    ev.buy(test=test, model=model)
+    ev.buy(test=test)
 
 
 main.add_command(nvidia)
