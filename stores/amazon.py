@@ -33,6 +33,7 @@ HOME_PAGE_TITLES = [
     "Amazon.de: Günstige Preise für Elektronik & Foto, Filme, Musik, Bücher, Games, Spielzeug & mehr",
     "Amazon.es: compra online de electrónica, libros, deporte, hogar, moda y mucho más.",
     "Amazon.de: Günstige Preise für Elektronik & Foto, Filme, Musik, Bücher, Games, Spielzeug & mehr",
+    "Amazon.fr : livres, DVD, jeux vidéo, musique, high-tech, informatique, jouets, vêtements, chaussures, sport, bricolage, maison, beauté, puériculture, épicerie et plus encore !"
 ]
 SHOPING_CART_TITLES = [
     "Amazon.com Shopping Cart",
@@ -40,6 +41,7 @@ SHOPING_CART_TITLES = [
     "Amazon.de Basket",
     "Amazon.de Einkaufswagen",
     "Cesta de compra Amazon.es",
+    "Amazon.fr Panier"
 ]
 CHECKOUT_TITLES = [
     "Amazon.com Checkout",
@@ -50,13 +52,15 @@ CHECKOUT_TITLES = [
     "Place Your Order - Amazon.com Checkout",
     "Place Your Order - Amazon.com",
     "Tramitar pedido en Amazon.es",
+    "Processus de paiement Amazon.com"
 ]
-ORDER_COMPLETE_TITLES = ["Amazon.com Thanks You", "Thank you"]
+ORDER_COMPLETE_TITLES = ["Amazon.com Thanks You", "Thank you", "Amazon.fr Merci", "Merci"]
 ADD_TO_CART_TITLES = [
     "Amazon.com: Please Confirm Your Action",
     "Amazon.de: Bitte bestätigen Sie Ihre Aktion",
     "Amazon.de: Please Confirm Your Action",
     "Amazon.es: confirma tu acción",
+    "Amazon.com : Veuillez confirmer votre action"  # Careful, required non-breaking space after .com (&nbsp)
 ]
 
 
@@ -165,6 +169,9 @@ class Amazon:
             return False
 
     def get_captcha_help(self):
+        if not self.on_captcha_page():
+            log.info("Not on captcha page.")
+            return
         try:
             log.info("Stuck on a captcha... Lets try to solve it.")
             captcha = AmazonCaptcha.from_webdriver(self.driver)
@@ -172,7 +179,7 @@ class Amazon:
             log.info(f"The solution is: {solution}")
             if solution == "Not solved":
                 log.info(f"Failed to solve, lets reload and get a new captcha.")
-                self.driver.execute_script("window.location.reload()")
+                self.driver.refresh()
                 time.sleep(5)
                 self.get_captcha_help()
             else:
@@ -181,19 +188,32 @@ class Amazon:
                 ).send_keys(solution + Keys.RETURN)
         except Exception as e:
             log.debug(e)
-            log.info("We were unable to solve the captcha, need help from the user.")
-            self.notification_handler.send_notification(
-                "Amazon bot is stuck on a captcha!"
-            )
+            log.info("Error trying to solve captcha. Refresh and retry.")
+            self.driver.refresh()
+            time.sleep(5)
+
+    def on_captcha_page(self):
+        try:
+            if self.driver.title in CAPTCHA_PAGE_TITLES:
+                return True
+            if self.driver.find_element_by_xpath(
+                '//form[@action="/errors/validateCaptcha"]'
+            ):
+                return True
+        except Exception:
+            pass
+        return False
 
     def check_if_captcha(self, func, args):
         try:
             func(args)
         except Exception as e:
-            if self.driver.title in CAPTCHA_PAGE_TITLES:
+            log.debug(str(e))
+            if self.on_captcha_page():
                 self.get_captcha_help()
                 func(args, t=300)
             else:
+                log.debug(self.driver.title)
                 log.error(
                     f"An error happened, please submit a bug report including a screenshot of the page the "
                     f"selenium browser is on. There may be a file saved at: amazon-{func.__name__}.png"
@@ -282,4 +302,3 @@ class Amazon:
         self.wait_for_order_completed(test)
 
         log.info("Order Placed.")
-
